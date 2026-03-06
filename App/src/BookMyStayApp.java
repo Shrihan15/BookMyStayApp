@@ -1,4 +1,4 @@
-public class HotelBookingApp {
+public class BookMyStayApp {
     // Using constants makes the app easier to update later
     private static final String APP_NAME = "Book My Stay";
     private static final String VERSION = "1.0.0";
