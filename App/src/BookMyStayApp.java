@@ -15,13 +15,20 @@ class Room {
         this.amenities = amenities;
     }
 
-    public String getId() { return id; }
-    public String getType() { return type; }
+    public String getId() {
+        return id;
+    }
+
+    public String getType() {
+        return type;
+    }
 
     @Override
     public String toString() {
-        return String.format("%-15s | Price: $%-6.2f | Amenities: %s",
-                type, pricePerNight, String.join(", ", amenities));
+        return String.format(
+                "%-15s | Price: $%-6.2f | Amenities: %s",
+                type, pricePerNight, String.join(", ", amenities)
+        );
     }
 }
 
@@ -33,7 +40,6 @@ class Inventory {
         availability.put(roomId, count);
     }
 
-    // Read-only access to state
     public int getCount(String roomId) {
         return availability.getOrDefault(roomId, 0);
     }
@@ -50,7 +56,6 @@ class SearchService {
     }
 
     public List<Room> performSearch() {
-        // Validation: Only return rooms with availability > 0
         return roomCatalog.values().stream()
                 .filter(room -> inventory.getCount(room.getId()) > 0)
                 .collect(Collectors.toList());
@@ -60,18 +65,16 @@ class SearchService {
 // --- 4. MAIN ENTRY POINT (Execution) ---
 public class BookMyStayApp {
     public static void main(String[] args) {
-        // --- Setup Data ---
         Map<String, Room> catalog = new HashMap<>();
         catalog.put("101", new Room("101", "Deluxe Suite", 250.0, List.of("WiFi", "Ocean View", "Mini Bar")));
         catalog.put("102", new Room("102", "Standard Twin", 120.0, List.of("WiFi", "TV")));
         catalog.put("103", new Room("103", "Single Budget", 75.0, List.of("WiFi")));
 
         Inventory hotelInventory = new Inventory();
-        hotelInventory.setAvailability("101", 3); // Available
-        hotelInventory.setAvailability("102", 0); // SOLD OUT (Should be filtered)
-        hotelInventory.setAvailability("103", 5); // Available
+        hotelInventory.setAvailability("101", 3);
+        hotelInventory.setAvailability("102", 0);
+        hotelInventory.setAvailability("103", 5);
 
-        // --- Execute Use Case ---
         SearchService searchService = new SearchService(hotelInventory, catalog);
 
         System.out.println("--- Guest Room Search Results ---");
