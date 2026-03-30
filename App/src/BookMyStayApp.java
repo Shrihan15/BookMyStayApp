@@ -1,91 +1,74 @@
 import java.util.*;
-import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
-// --- 1. THE DOMAIN MODEL (Room Details) ---
-class Room {
-    private String id;
-    private String type;
-    private double pricePerNight;
-    private List<String> amenities;
+// --- 1. THE DATA MODEL (Guest Intent) ---
+class ReservationRequest {
+    private final String requestId;
+    private final String guestName;
+    private final String roomTypeId;
+    private final LocalDateTime timestamp;
 
-    public Room(String id, String type, double pricePerNight, List<String> amenities) {
-        this.id = id;
-        this.type = type;
-        this.pricePerNight = pricePerNight;
-        this.amenities = amenities;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getType() {
-        return type;
+    public ReservationRequest(String guestName, String roomTypeId) {
+        this.requestId = UUID.randomUUID().toString().substring(0, 8);
+        this.guestName = guestName;
+        this.roomTypeId = roomTypeId;
+        this.timestamp = LocalDateTime.now();
     }
 
     @Override
     public String toString() {
-        return String.format(
-                "%-15s | Price: $%-6.2f | Amenities: %s",
-                type, pricePerNight, String.join(", ", amenities)
-        );
+        return String.format("[%s] Guest: %-10s | Room: %-12s | Time: %s",
+                requestId, guestName, roomTypeId, timestamp.toLocalTime());
     }
 }
 
-// --- 2. INVENTORY (State Holder) ---
-class Inventory {
-    private final Map<String, Integer> availability = new HashMap<>();
+// --- 2. THE QUEUE MANAGER (Intake Mechanism) ---
+class BookingQueueManager {
+    // Using a Queue to preserve arrival order (FIFO)
+    private final Queue<ReservationRequest> requestQueue = new LinkedList<>();
 
-    public void setAvailability(String roomId, int count) {
-        availability.put(roomId, count);
+    // Intake: No inventory is changed here!
+    public void submitRequest(ReservationRequest request) {
+        requestQueue.add(request);
+        System.out.println(">>> Request Queued: " + request.toString());
     }
 
-    public int getCount(String roomId) {
-        return availability.getOrDefault(roomId, 0);
-    }
-}
-
-// --- 3. SEARCH SERVICE (Business Logic) ---
-class SearchService {
-    private final Inventory inventory;
-    private final Map<String, Room> roomCatalog;
-
-    public SearchService(Inventory inventory, Map<String, Room> roomCatalog) {
-        this.inventory = inventory;
-        this.roomCatalog = roomCatalog;
+    public boolean hasRequests() {
+        return !requestQueue.isEmpty();
     }
 
-    public List<Room> performSearch() {
-        return roomCatalog.values().stream()
-                .filter(room -> inventory.getCount(room.getId()) > 0)
-                .collect(Collectors.toList());
+    // This would be called by the Allocation System later
+    public ReservationRequest nextRequest() {
+        return requestQueue.poll();
+    }
+
+    public int getQueueSize() {
+        return requestQueue.size();
     }
 }
 
-// --- 4. MAIN ENTRY POINT (Execution) ---
+// --- 3. MAIN EXECUTION ---
 public class BookMyStayApp {
-    public static void main(String[] args) {
-        Map<String, Room> catalog = new HashMap<>();
-        catalog.put("101", new Room("101", "Deluxe Suite", 250.0, List.of("WiFi", "Ocean View", "Mini Bar")));
-        catalog.put("102", new Room("102", "Standard Twin", 120.0, List.of("WiFi", "TV")));
-        catalog.put("103", new Room("103", "Single Budget", 75.0, List.of("WiFi")));
+    public static void main(String[] args) throws InterruptedException {
+        BookingQueueManager queueManager = new BookingQueueManager();
 
-        Inventory hotelInventory = new Inventory();
-        hotelInventory.setAvailability("101", 3);
-        hotelInventory.setAvailability("102", 0);
-        hotelInventory.setAvailability("103", 5);
+        System.out.println("--- System: Booking Intake Started (FIFO) ---");
 
-        SearchService searchService = new SearchService(hotelInventory, catalog);
+        // Simulating rapid-fire requests (Arrival Order)
+        queueManager.submitRequest(new ReservationRequest("Alice", "Deluxe Suite"));
+        Thread.sleep(100); // Simulate tiny delay in network arrival
+        queueManager.submitRequest(new ReservationRequest("Bob", "Standard Room"));
+        Thread.sleep(100);
+        queueManager.submitRequest(new ReservationRequest("Charlie", "Deluxe Suite"));
 
-        System.out.println("--- Guest Room Search Results ---");
-        List<Room> availableRooms = searchService.performSearch();
+        System.out.println("\n--- Current Queue Status ---");
+        System.out.println("Total requests waiting: " + queueManager.getQueueSize());
 
-        if (availableRooms.isEmpty()) {
-            System.out.println("No rooms currently available.");
-        } else {
-            availableRooms.forEach(System.out::println);
+        System.out.println("\n--- Preparation for Allocation (Processing Order) ---");
+        while (queueManager.hasRequests()) {
+            ReservationRequest processing = queueManager.nextRequest();
+            System.out.println("Ready to process: " + processing);
+            // Allocation logic (Use Case 6) would happen here.
         }
-
-        System.out.println("\n(System State: Unchanged)");
     }
 }
